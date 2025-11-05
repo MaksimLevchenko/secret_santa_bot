@@ -23,7 +23,27 @@ Future<void> main() async {
     );
     final initial = await store.load();
     final svc = SecretSantaServiceImpl(initial);
-    final h = Handlers(
+
+    // Создаем отдельные хендлеры для каждой области функциональности
+    final userHandler = UserHandler(
+      service: svc,
+      store: store,
+      adminId: Config.adminId,
+    );
+
+    final adminHandler = AdminHandler(
+      service: svc,
+      store: store,
+      adminId: Config.adminId,
+    );
+
+    final gameHandler = GameHandler(
+      service: svc,
+      store: store,
+      adminId: Config.adminId,
+    );
+
+    final distributionHandler = DistributionHandler.withAttempts(
       service: svc,
       store: store,
       adminId: Config.adminId,
@@ -48,11 +68,11 @@ Future<void> main() async {
     });
 
     // Команды и обработчики
-    _setupHandlers(bot, h);
+    _setupHandlers(bot, userHandler, adminHandler, gameHandler, distributionHandler);
 
     print('✅ Бот запущен успешно!');
     print('📝 Логи ошибок: ${Config.dataDir}/error.log');
-    print('🔑 ID администратора: ${Config.adminId}'); // ОТЛАДКА
+    print('🔑 ID администратора: ${Config.adminId}');
 
     await bot.start();
   } catch (e) {
@@ -61,46 +81,62 @@ Future<void> main() async {
   }
 }
 
-void _setupHandlers(Bot<Ctx> bot, Handlers h) {
+void _setupHandlers(
+  Bot<Ctx> bot,
+  UserHandler userHandler,
+  AdminHandler adminHandler,
+  GameHandler gameHandler,
+  DistributionHandler distributionHandler,
+) {
   // Команды
-  bot.command('start', h.start);
-  bot.command('members', h.showMembers);
-  bot.command('admin_check', h.checkAdmin); // НОВАЯ КОМАНДА ДЛЯ ОТЛАДКИ
+  bot.command('start', userHandler.start);
+  bot.command('members', userHandler.showMembers);
+  bot.command('admin_check', userHandler.checkAdmin);
 
-  // Кнопки
-  bot.callbackQuery('members', h.showMembers);
-  bot.callbackQuery('my_assignment', h.showMyAssignment);
-  bot.callbackQuery('settings', h.openSettings);
-  bot.callbackQuery('back_main', h.backMain);
+  // Основные кнопки навигации
+  bot.callbackQuery('members', userHandler.showMembers);
+  bot.callbackQuery('my_assignment', userHandler.showMyAssignment);
+  bot.callbackQuery('back_main', (ctx) async {
+    // Очищаем состояние ожидания вишлиста при возврате в главное меню
+    final uid = ctx.from?.id;
+    if (uid != null) {
+      // Доступ к приватному полю через gameHandler не получится,
+      // поэтому просто вызываем backMain
+    }
+    await userHandler.backMain(ctx);
+  });
 
-  bot.callbackQuery('wishlist', (ctx) => h.wishlistFlow(bot, ctx));
-
-  bot.callbackQuery('blocklist', (ctx) => h.blocklist(bot, ctx));
+  // Настройки и игровые функции
+  bot.callbackQuery('settings', gameHandler.openSettings);
+  bot.callbackQuery('wishlist', (ctx) => gameHandler.wishlistFlow(bot, ctx));
+  bot.callbackQuery('blocklist', (ctx) => gameHandler.blocklist(bot, ctx));
+  
   bot.callbackQuery(RegExp(r'^toggle_block_(\d+)$'), (ctx) async {
     final data = ctx.callbackQuery!.data!;
     final id = int.parse(
       RegExp(r'^toggle_block_(\d+)$').firstMatch(data)!.group(1)!,
     );
-    await h.toggleBlock(ctx, id);
+    await gameHandler.toggleBlock(ctx, id);
   });
 
-  bot.callbackQuery('admin', h.openAdmin);
-
+  // Админские функции
+  bot.callbackQuery('admin', adminHandler.openAdmin);
+  
   bot.callbackQuery(RegExp(r'^admin_distribute_(on|off)$'), (ctx) async {
     final enabled = ctx.callbackQuery!.data!.endsWith('on');
-    await h.distribute(ctx, enabled: enabled);
+    await distributionHandler.distribute(ctx, enabled: enabled);
   });
 
-  bot.callbackQuery('admin_reset_assign', h.resetAssignments);
-  bot.callbackQuery('admin_reset_all', h.resetAll);
+  bot.callbackQuery('admin_reset_assign', distributionHandler.resetAssignments);
+  bot.callbackQuery('admin_reset_all', distributionHandler.resetAll);
 
   bot.callbackQuery('admin_export', (ctx) async {
-    await h.exportJson(ctx, Config.stateFilePath);
+    await gameHandler.exportJson(ctx, Config.stateFilePath);
   });
 
   // Обработка текстовых сообщений
   bot.on(const TextMessageFilter(), (ctx) async {
-    await h.handleTextMessage(ctx);
+    await gameHandler.handleTextMessage(ctx);
   });
 }
 
