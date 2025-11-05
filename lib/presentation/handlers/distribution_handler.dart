@@ -3,15 +3,9 @@ import 'package:secret_santa_bot/presentation/ui.dart';
 import 'base_handler.dart';
 
 class DistributionHandler extends BaseHandler {
-  DistributionHandler({
-    required super.service,
-    required super.store,
-    required super.adminId,
-  });
-
   final int maxAttempts;
 
-  DistributionHandler.withAttempts({
+  DistributionHandler({
     required super.service,
     required super.store,
     required super.adminId,
