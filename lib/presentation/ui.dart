@@ -97,8 +97,9 @@ class UI {
   }
 
   static String formatMembers(List<Participant> list) {
-    if (list.isEmpty)
+    if (list.isEmpty) {
       return 'Пока нет участников.\n\n💡 Участники появятся после команды /start';
+    }
 
     final b = StringBuffer('👥 Участники (${list.length}):\n\n');
     for (final u in list) {

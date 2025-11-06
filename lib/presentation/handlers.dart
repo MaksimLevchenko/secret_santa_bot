@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:televerse/televerse.dart';
 import 'package:secret_santa_bot/domain/models.dart';
 import 'package:secret_santa_bot/domain/repositories.dart';
-import 'package:secret_santa_bot/infrastructure/config.dart';
 import 'package:secret_santa_bot/presentation/ui.dart';
 import 'package:secret_santa_bot/app/secret_santa_service.dart';
 
@@ -485,7 +484,7 @@ class Handlers {
       await _saveState();
 
       await ctx.reply(
-        '✅ Вишлист сохранен!\n\n📝 Ваш вишлист:\n${text.length > 200 ? text.substring(0, 200) + '...' : text}',
+        '✅ Вишлист сохранен!\n\n📝 Ваш вишлист:\n${text.length > 200 ? '${text.substring(0, 200)}...' : text}',
         replyMarkup: UI.backToSettingsKeyboard(),
       );
       return;
